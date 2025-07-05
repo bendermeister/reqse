@@ -8,6 +8,6 @@ mod version;
 pub use error::Error;
 pub use method::Method;
 pub use request::{Request, RequestBuilder};
-pub use response::Response;
+pub use response::{Response, ResponseBuilder};
 pub use status::Status;
 pub use version::Version;

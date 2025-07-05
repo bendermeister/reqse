@@ -6,8 +6,8 @@ pub struct Request {
     pub version: Version,
     pub uri: String,
     pub method: Method,
-    pub headers: HashMap<String, String>,
-    pub body: Vec<u8>,
+    pub header: HashMap<String, String>,
+    pub body: Option<Vec<u8>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -15,7 +15,7 @@ pub struct RequestBuilder {
     pub version: Option<Version>,
     pub uri: Option<String>,
     pub method: Method,
-    pub headers: HashMap<String, String>,
+    pub header: HashMap<String, String>,
     pub body: Option<Vec<u8>>,
 }
 
@@ -25,7 +25,7 @@ impl RequestBuilder {
             version: None,
             uri: None,
             method,
-            headers: HashMap::new(),
+            header: HashMap::new(),
             body: None,
         }
     }
@@ -68,7 +68,7 @@ impl RequestBuilder {
     ///     .header("Accept".to_owned(), "*/*".to_owned());
     /// ```
     pub fn header(mut self, key: String, value: String) -> Self {
-        self.headers.insert(key, value);
+        self.header.insert(key, value);
         self
     }
 
@@ -94,20 +94,20 @@ impl RequestBuilder {
         let uri = self.uri.unwrap_or_else(|| "/".to_owned());
         let method = self.method;
         let version = self.version.unwrap_or(Version::Http11);
-        let body = self.body.unwrap_or_else(|| vec![]);
-        let mut headers = self.headers;
+        let body = self.body;
+        let mut header = self.header;
 
-        if body.is_empty() {
-            headers.remove("Content-Length");
+        if let Some(len) = body.as_ref().map(|i| i.len()) {
+            header.insert("Content-Length".to_owned(), len.to_string());
         } else {
-            headers.insert("Content-Length".to_owned(), body.len().to_string());
+            header.remove("Content-Length");
         }
 
         Request {
             version,
             uri,
             method,
-            headers,
+            header,
             body,
         }
     }
@@ -249,17 +249,21 @@ impl Request {
             return Err(Error::NotEnoughData);
         }
 
-        let body = &body[..content_len];
+        let body = if content_len > 0 {
+            Some(&body[..content_len])
+        } else {
+            None
+        };
 
         Ok(Request {
             version,
             uri: uri.to_owned(),
             method,
-            headers: headers
+            header: headers
                 .into_iter()
                 .map(|(k, v)| (k.to_owned(), v.to_owned()))
                 .collect(),
-            body: body.to_owned(),
+            body: body.map(|i| i.to_owned()),
         })
     }
 
@@ -285,7 +289,7 @@ impl Request {
         buffer.push(b' ');
         buffer.extend_from_slice(self.version.to_static().as_bytes());
 
-        for (key, value) in self.headers.iter() {
+        for (key, value) in self.header.iter() {
             buffer.extend_from_slice(b"\r\n");
             buffer.extend_from_slice(key.as_bytes());
             buffer.extend_from_slice(b": ");
@@ -293,7 +297,10 @@ impl Request {
         }
 
         buffer.extend_from_slice(b"\r\n\r\n");
-        buffer.extend_from_slice(&self.body);
+
+        if let Some(body) = self.body.as_ref() {
+            buffer.extend_from_slice(body);
+        }
 
         buffer
     }

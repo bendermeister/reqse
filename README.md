@@ -1,5 +1,5 @@
 # reqse
-HTTP Request and Response
+simple HTTP requests and responses
 
 ## Motivation
 Making it easy to parse a `&[u8]` into a HTTP Request / Response for further
@@ -38,3 +38,26 @@ fn main() {
     }
 }
 ```
+For a more complete example see exmaples/tokio-hello-world.rs.
+
+## Why build a server like this
+- **fewer dependencies**: you can have a simple asynchronous rest server with
+  just reqse and tokio
+- **no hidden control flow**: you can see (and built) the entire call graph
+- **easier testing**: if you are like me you will end up with some `router`
+  function which takes a request and calls an appropriated route handler
+  ```rust
+  fn handler(request: Request) -> io::Result<Response> {
+      todo!()
+  }
+
+  #[test]
+  fn test_handler() {
+      let request = Request::get().uri("/".into()).finish();
+      let response = handler(request).unwrap();
+  }
+  ```
+  these handlers are stupidly easy to test. just create a request call the
+  handler and check the response
+- **its just functions**: no generics, no macros, no magic which makes it very
+  easy to debug

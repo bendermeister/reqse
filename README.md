@@ -19,22 +19,24 @@ fn main() {
 
         // read the request
         connection.read(&mut buf).unwrap();
-        
+
         // parse the request
         let request = Request::from_bytes(&buf).unwrap();
 
         // create a response based on the request in this case either
         // - 200 Ok with body: "Hello World"
         // - or 404 NotFound
-        let response = match (request.method, request.uri.as_str()) {
-            (Method::Get, "/") => Response::ok()
-                .body("Hello World".as_bytes().to_vec())
-                .finish(),
-            _ => Response::not_found().finish(),
+        let response = match (request.method(), request.uri()) {
+            (Method::Get, "/") => {
+                let mut response = ResponseBuilder::ok();
+                response.body_mut().extend_from_slice(b"Hello World");
+                response
+            }
+            _ => ResponseBuilder::not_found(),
         };
 
         // send the response to the client
-        connection.write(&response.to_bytes()).unwrap();
+        connection.write(response.finish().as_ref()).unwrap();
     }
 }
 ```

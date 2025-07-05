@@ -214,4 +214,26 @@ impl Response {
             body: body.map(|inner| inner.to_owned()),
         })
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = vec![];
+
+        buf.extend_from_slice(self.version.to_static().as_bytes());
+        buf.push(b' ');
+        buf.extend_from_slice(self.status.to_static_str().as_bytes());
+
+        for (key, value) in self.header.iter() {
+            buf.extend_from_slice(b"\r\n");
+            buf.extend_from_slice(key.as_bytes());
+            buf.extend_from_slice(b": ");
+            buf.extend_from_slice(value.as_bytes());
+        }
+        buf.extend_from_slice(b"\r\n\r\n");
+
+        if let Some(body) = self.body.as_deref() {
+            buf.extend_from_slice(body);
+        }
+
+        buf
+    }
 }

@@ -245,7 +245,7 @@ impl Request {
             .ok()
             .ok_or(Error::InvalidHeader)?;
 
-        if content_len < body.len() {
+        if body.len() < content_len {
             return Err(Error::NotEnoughData);
         }
 

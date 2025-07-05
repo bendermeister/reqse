@@ -1,4 +1,4 @@
-use reqse::{Method, Request, Response};
+use reqse::{Method, Request, ResponseBuilder};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
@@ -31,11 +31,13 @@ fn main() {
 
         // check if the request is  a GET request on '/' if so return 200 OK with body 'Hello
         // World' otherwise return 404 Not Found
-        let response = match (request.method, request.uri.as_str()) {
-            (Method::Get, "/") => Response::ok()
-                .body("Hello World".as_bytes().to_vec())
-                .finish(),
-            _ => Response::not_found().finish(),
+        let response = match (request.method(), request.uri()) {
+            (Method::Get, "/") => {
+                let mut response = ResponseBuilder::ok();
+                response.body_mut().extend_from_slice(b"Hello World");
+                response
+            }
+            _ => ResponseBuilder::not_found(),
         };
 
         println!("created response: {:#?}", &response);
@@ -44,7 +46,7 @@ fn main() {
         //
         // NOTE: the write method might not write the entire response in a real application a write
         // loop would be more appropriate
-        connection.write(&response.to_bytes()).unwrap();
+        connection.write(response.finish().as_ref()).unwrap();
 
         println!("send response");
     }

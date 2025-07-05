@@ -2,10 +2,11 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Version {
-    Http10,
-    Http11,
+    Http0,
+    #[default]
+    Http1,
     Http2,
     Http3,
 }
@@ -15,8 +16,8 @@ impl FromStr for Version {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "HTTP/1.0" => Ok(Self::Http10),
-            "HTTP/1.1" => Ok(Self::Http11),
+            "HTTP/1.0" => Ok(Self::Http0),
+            "HTTP/1.1" => Ok(Self::Http1),
             "HTTP/2" => Ok(Self::Http2),
             "HTTP/3" => Ok(Self::Http3),
             _ => Err(Error::InvalidHeader),
@@ -27,8 +28,8 @@ impl FromStr for Version {
 impl Version {
     pub fn to_static(&self) -> &'static str {
         match self {
-            Version::Http10 => "HTTP/1.0",
-            Version::Http11 => "HTTP/1.1",
+            Version::Http0 => "HTTP/1.0",
+            Version::Http1 => "HTTP/1.1",
             Version::Http2 => "HTTP/2",
             Version::Http3 => "HTTP/3",
         }

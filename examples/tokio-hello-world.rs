@@ -1,4 +1,4 @@
-use reqse::{Method, Request, Response};
+use reqse::{Method, Request, ResponseBuilder};
 use std::io;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -32,7 +32,7 @@ async fn handle_connection(mut connection: TcpStream) -> io::Result<()> {
             println!("reading request");
             if buf_offset >= buf.len() {
                 connection
-                    .write_all(&Response::bad_request().finish().to_bytes())
+                    .write_all(ResponseBuilder::bad_request().finish().as_ref())
                     .await?;
                 continue 'conn;
             }
@@ -48,7 +48,7 @@ async fn handle_connection(mut connection: TcpStream) -> io::Result<()> {
                 Err(err) => {
                     eprintln!("ERROR while parsing request: {}", err);
                     connection
-                        .write_all(&Response::bad_request().finish().to_bytes())
+                        .write_all(ResponseBuilder::bad_request().finish().as_ref())
                         .await?;
                     continue 'conn;
                 }
@@ -57,11 +57,10 @@ async fn handle_connection(mut connection: TcpStream) -> io::Result<()> {
 
         println!("got request: {:#?}", &request);
 
-        let response =
-            router(request).unwrap_or_else(|_| Response::internal_server_error().finish());
+        let response = router(request).unwrap_or_else(|_| ResponseBuilder::internal_server_error());
 
         println!("created response: {:#?}", &response);
-        connection.write_all(response.to_bytes().as_ref()).await?;
+        connection.write_all(response.finish().as_ref()).await?;
         connection.flush().await?;
     }
 
@@ -70,25 +69,25 @@ async fn handle_connection(mut connection: TcpStream) -> io::Result<()> {
     Ok(())
 }
 
-fn router(request: Request) -> io::Result<Response> {
-    match (request.method, request.uri.as_ref()) {
+fn router(request: Request) -> io::Result<ResponseBuilder> {
+    match (request.method(), request.uri()) {
         (Method::Get, "/") => routes::root(request),
 
         (Method::Get, "/health_check") => routes::health_check(request),
 
-        _ => Ok(Response::not_found().finish()),
+        _ => Ok(ResponseBuilder::not_found()),
     }
 }
 
 mod routes {
     use super::*;
-    pub fn root(_: Request) -> io::Result<Response> {
-        Ok(Response::ok()
-            .body("Hello World".as_bytes().to_vec())
-            .finish())
+    pub fn root(_: Request) -> io::Result<ResponseBuilder> {
+        let mut response = ResponseBuilder::ok();
+        response.body_mut().extend_from_slice(b"Hello World");
+        Ok(response)
     }
 
-    pub fn health_check(_: Request) -> io::Result<Response> {
-        Ok(Response::ok().finish())
+    pub fn health_check(_: Request) -> io::Result<ResponseBuilder> {
+        Ok(ResponseBuilder::ok())
     }
 }
